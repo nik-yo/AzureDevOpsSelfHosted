@@ -1,0 +1,431 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  AgentDownloadUrl:
+    Type: String
+    Description: Url to download the agent for Linux.
+    Default: https://vstsagentpackage.azureedge.net/agent/3.246.0/vsts-agent-linux-x64-3.246.0.tar.gz
+
+  UbuntuParentImageArn:
+    Type: String
+    Description: For this project, Ubuntu 22.04 is the latest supported by Azure DevOps.
+    Default: arn:aws:imagebuilder:us-east-2:aws:image/ubuntu-server-22-lts-x86/2024.9.27
+
+Resources:
+  AgentComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: !Sub
+        - |
+          name: download-agent
+          description: Download Azure DevOps agent
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Download
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y dotnet-sdk-6.0'
+                      - 'mkdir /opt/adoagent'
+                      - 'chown ubuntu /opt/adoagent'
+                      - 'cd /opt/adoagent'
+                      - 'curl -O ${AgentDownloadUrl}'
+                      - 'tar zxf *.tar.gz'
+        - AgentDownloadUrl: !Ref AgentDownloadUrl
+      Description: Download Azure DevOps agent
+      Name: azuredevops-agent
+      Platform: Linux
+      Version: 0.1.0
+
+  DotnetSdkComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-dotnet-sdk
+          description: Install .NET SDK
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y dotnet-sdk-8.0'
+      Description: Install .NET SDK
+      Name: dotnet-sdk
+      Platform: Linux
+      Version: 0.1.0
+
+  GitComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-git
+          description: Install Git
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y git'
+      Description: Install Git
+      Name: git
+      Platform: Linux
+      Version: 0.1.0
+
+  DockerComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-docker
+          description: Install Docker
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y ca-certificates'
+                      - 'sudo install -m 0755 -d /etc/apt/keyrings'
+                      - 'sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc'
+                      - 'sudo chmod a+r /etc/apt/keyrings/docker.asc'
+                      - 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null'
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin'
+                      - 'sudo usermod -aG docker ubuntu'
+      Description: Install Docker
+      Name: docker
+      Platform: Linux
+      Version: 0.1.0
+
+  HelmComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-helm
+          description: Install Helm
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null'
+                      - 'sudo apt-get install apt-transport-https --yes'
+                      - 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list'
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install helm -y'
+      Description: Install Helm
+      Name: helm
+      Platform: Linux
+      Version: 0.1.0
+
+  KubectlComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-kubectl
+          description: Install Kubectl
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'snap install kubectl --classic'
+      Description: Install Kubectl
+      Name: kubectl
+      Platform: Linux
+      Version: 0.1.0
+  
+  JqComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-jq
+          description: Install Jq
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y jq'
+      Description: Install Jq
+      Name: jq-package
+      Platform: Linux
+      Version: 0.1.0
+
+  YqComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-yq
+          description: Install Yq
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'snap install yq'
+      Description: Install Yq
+      Name: yq-package
+      Platform: Linux
+      Version: 0.1.0
+
+  ZipComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-zip
+          description: Install Zip
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y zip'
+      Description: Install Zip
+      Name: zip
+      Platform: Linux
+      Version: 0.1.0
+
+  UnzipComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-unzip
+          description: Install Unzip
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update && sudo apt-get install -y unzip'
+      Description: Install Unzip
+      Name: unzip
+      Platform: Linux
+      Version: 0.1.0
+
+  AwsCliComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-aws-cli
+          description: Install AWS Cli
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'mkdir /opt/awscli'
+                      - 'cd /opt/awscli'
+                      - 'curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+                      - 'unzip awscliv2.zip'
+                      - 'sudo ./aws/install'
+      Description: Install AWS Cli
+      Name: aws-cli
+      Platform: Linux
+      Version: 0.1.0
+
+  AzureCliComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-azure-cli
+          description: Install Azure Cli
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash'
+      Description: Install Azure Cli
+      Name: azure-cli
+      Platform: Linux
+      Version: 0.1.0
+    
+  PowerShellCoreComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-pwsh
+          description: Install PowerShell Core
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y wget apt-transport-https software-properties-common'
+                      - 'source /etc/os-release'
+                      - 'wget -q https://packages.microsoft.com/config/ubuntu/$VERSION_ID/packages-microsoft-prod.deb'
+                      - 'sudo dpkg -i packages-microsoft-prod.deb'
+                      - 'rm packages-microsoft-prod.deb'
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y powershell'
+      Description: Install PowerShell Core
+      Name: powershellcore
+      Platform: Linux
+      Version: 0.1.0
+
+  NodeJsComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-nodejs
+          description: Install Node.js
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y nodejs'
+      Description: Install Node.js
+      Name: node-js
+      Platform: Linux
+      Version: 0.1.0
+
+  MonoComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-mono
+          description: Install Mono
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:                      
+                      - 'sudo apt-get install -y ca-certificates gnupg'
+                      - 'sudo gpg --homedir /tmp --no-default-keyring --keyring /usr/share/keyrings/mono-official-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF'
+                      - 'echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list'
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y mono-complete'
+      Description: Install Mono
+      Name: mono
+      Platform: Linux
+      Version: 0.1.0
+
+  PythonComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+          name: install-python
+          description: Install Python
+          schemaVersion: 1
+          phases:
+            - name: build
+              steps:
+                - name: Install
+                  action: ExecuteBash
+                  inputs:
+                    commands:
+                      - 'sudo apt-get update'
+                      - 'sudo apt-get install -y python3 python3-pip'
+                      - 'sudo -i -u ubuntu pip install -U pdm'
+      Description: Install Python
+      Name: python
+      Platform: Linux
+      Version: 0.1.0
+
+  AgentImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Components:
+        - ComponentArn: !Ref AgentComponent
+        - ComponentArn: !Ref DotnetSdkComponent
+        - ComponentArn: !Ref GitComponent
+        - ComponentArn: !Ref DockerComponent
+        - ComponentArn: !Ref HelmComponent
+        - ComponentArn: !Ref KubectlComponent
+        - ComponentArn: !Ref JqComponent
+        - ComponentArn: !Ref YqComponent
+        - ComponentArn: !Ref ZipComponent
+        - ComponentArn: !Ref UnzipComponent
+        - ComponentArn: !Ref AwsCliComponent
+        - ComponentArn: !Ref AzureCliComponent
+        - ComponentArn: !Ref PowerShellCoreComponent
+        - ComponentArn: !Ref NodeJsComponent
+        - ComponentArn: !Ref MonoComponent
+        - ComponentArn: !Ref PythonComponent
+      Description: Custom AMI for Azure DevOps self-hosted
+      Name: adoagent
+      ParentImage: !Ref UbuntuParentImageArn
+      Version: 0.1.0
+
+  ImageBuilderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilderECRContainerBuilds
+      RoleName: ImageBuilderRole
+
+  ImageBuilderInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: ImageBuilderInstanceProfile
+      Roles: 
+        - !Ref ImageBuilderRole
+
+  AgentInfrastructureConfiguration:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      InstanceProfileName: !Ref ImageBuilderInstanceProfile
+      Name: adoagent
+
+  AgentImagePipeline:
+    Type: AWS::ImageBuilder::ImagePipeline
+    Properties:
+      ImageRecipeArn: !Ref AgentImageRecipe
+      InfrastructureConfigurationArn: !Ref AgentInfrastructureConfiguration
+      Name: adoagent
